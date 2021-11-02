@@ -864,6 +864,24 @@ def main():
 state = 'init'
 
 
+def avoid_obst(side):
+    run_action('stop')
+    if side == Side.LEFT:
+        run_action('fwleft')
+        run_action('forward')
+        run_action('fwright')
+        run_action('forward')
+        run_action('fwstraight')
+    else:
+        run_action('fwright')
+        run_action('forward')
+        run_action('fwleft')
+        run_action('forward')
+        run_action('fwstraight')
+
+    pass
+
+
 def detectLines(img):
     global state
     try:
