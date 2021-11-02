@@ -55,10 +55,10 @@ def draw(contours, image, name):
         i=i+1
 
 
-def detect(image):
+def detect_obst(image):
     # nparr = np.frombuffer(data, dtype=np.uint8)
     # image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-    height, width = img.shape[:2]
+    height, width = image.shape[:2]
     boundaries = [
         ([110, 0, 130], [233, 118, 255], 'purple'),  # purple
         ([176, 0, 135], [255, 135, 228], 'pink'), # pink

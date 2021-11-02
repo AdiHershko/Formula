@@ -16,7 +16,7 @@ import sys
 import cv2
 import numpy as np
 
-from DetectObs import detect
+from DetectObs import detect_obst
 
 if sys.version_info.major < 3 or sys.version_info.minor < 4:
     raise RuntimeError('At least Python 3.4 is required')
@@ -282,9 +282,16 @@ class RunningScreen(QtWidgets.QDialog, Ui_Running_screen):
         """
         # use the buile-in function to query image from http, and save in data
         data = self.queryImage.queryImage()
-        detectLines(data)
         if not data:
             return None
+        nparr = np.frombuffer(data, dtype=np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        obst = detect_obst(img)
+        if obst is not None:
+            # TODO
+            print('hello')
+        else:
+            detectLines(img)
         pixmap = QPixmap()
         # get pixmap type data from http type data
         pixmap.loadFromData(data)
@@ -850,11 +857,9 @@ def main():
 state = 'init'
 
 
-def detectLines(data):
+def detectLines(img):
     global state
     try:
-        nparr = np.frombuffer(data, dtype=np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         img = img[120:, :]
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         kernel_size = 5
