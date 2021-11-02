@@ -11,7 +11,9 @@
 * Update      : Dream    2016/09/12
 **********************************************************************/
 '''
+import math
 import sys
+from math import sqrt
 
 import cv2
 import numpy as np
@@ -393,6 +395,8 @@ class RunningScreen(QtWidgets.QDialog, Ui_Running_screen):
             elif key_release == Qt.Key_A:  # A
                 run_action('fwstraight')
             elif key_release == Qt.Key_S:  # S
+                run_action('stop')
+            elif key_release == Qt.Key_Q:  # Q
                 run_action('stop')
             elif key_release == Qt.Key_D:  # D
                 run_action('fwstraight')
@@ -847,25 +851,27 @@ def main():
     sys.exit(app.exec_())
 
 
-state = 'init'
+state = 'noLine'
+lineNotFoundcounter = 0
 
 
 def detectLines(data):
     global state
+    global linecounter
     try:
         nparr = np.frombuffer(data, dtype=np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        img = img[120:, :]
+        img = img[170:, :]
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         kernel_size = 5
         blur_gray = cv2.GaussianBlur(gray, (kernel_size, kernel_size), 0)
-        low_threshold = 90
+        low_threshold = 100
         high_threshold = 150
         edges = cv2.Canny(blur_gray, low_threshold, high_threshold)
         rho = 1  # distance resolution in pixels of the Hough grid
         theta = np.pi / 180  # angular resolution in radians of the Hough grid
         threshold = 50  # minimum number of votes (intersections in Hough grid cell)
-        min_line_length = 50  # minimum number of pixels making up a line
+        min_line_length = 100  # minimum number of pixels making up a line
         max_line_gap = 20  # maximum gap in pixels between connectable line segments
         line_image = np.copy(blur_gray) * 0  # creating a blank to draw lines on
 
@@ -873,45 +879,79 @@ def detectLines(data):
         # Output "lines" is an array containing endpoints of detected line segments
         lines = cv2.HoughLinesP(edges, rho, theta, threshold, np.array([]),
                                 min_line_length, max_line_gap)
-        cv2.line(line_image, (int(len(img[0]) / 2), 0), (int(len(img[0]) / 2), 1000), (255, 0, 0), 5)
+        # cv2.line(line_image, (int(len(img[0]) / 2), 0), (int(len(img[0]) / 2), 1000), (255, 0, 0), 5)
+        if len(lines) > 0:
+            linecounter = 0
+            if state == 'noLine':
+                run_action('camready')
+        maxDist = 0
+        maxLine = None
         for line in lines:
             for x1, y1, x2, y2 in line:
-                slope = (y2 - y1) / (x2 - x1)
-                if slope < 1 and slope > -1:
-                    continue
-                if slope > 5 or slope < -5:
-                    if state != 'forward':
-                        print('straight')
-                        run_action('fwstraight')
-                        run_action('forward')
-                        state = 'forward'
-                elif slope < 0 and x2 > (int(len(img[0]) / 2)):
-                    if state != 'right':
-                        print('right')
-                        run_action('fwright')
-                        state = 'right'
-                elif slope > 0 and x2 < (int(len(img[0]) / 2)):
-                    if state != 'left':
-                        print('left')
-                        run_action('fwleft')
-                        state = 'left'
-                else:
-                    if state != 'forward':
-                        print('straight')
-                        run_action('fwstraight')
-                        run_action('forward')
-                        state = 'forward'
-                print(f'slope: {slope}')
-                cv2.line(line_image, (x1, y1), (x2, y2), (255, 0, 0), 5)
+                dist = math.sqrt((x2-x1)**2 + (y2 - y1)**2)
+                if dist > maxDist:
+                    maxDist = dist
+                    maxLine = line
+        x1, y1, x2, y2 = maxLine[0]
+        slope = (y2-y1) / (x2-x1)
+        #if 1 > slope > -1:
+        #    pass
+        if slope > 2 or slope < -2:
+            print('straight')
+            if state != 'forward':
+
+                run_action('fwturn:90')
+                run_action('forward')
+                state = 'forward'
+        elif -2 < slope < 0:
+            print('right')
+            if state != 'right':
+                time.sleep(1.7)
+                run_action('fwturn:10')
+                if slope > -0.5:
+                    run_action('fwturn:20')
+                    time.sleep(1/(5*abs(slope)))
+                run_action('fwstraight')
+                state = 'right'
+        elif 0 < slope < 2:
+            print('left')
+            if state != 'left':
+                time.sleep(1.7)
+                run_action('fwturn:-10')
+                if slope < 0.5:
+                    run_action('fwturn:-20')
+                    time.sleep(1/(5*abs(slope)))
+                run_action('fwstraight')
+                state = 'left'
+        # else:
+        #     print('straight')
+        #     if state != 'forward':
+        #         run_action('fwstraight')
+        #         run_action('forward')
+        #         state = 'forward'
+        print(f'slope: {slope}')
+        cv2.line(line_image, (x1, y1), (x2, y2), (255, 0, 0), 5)
         # Draw the lines on the  image
         lines_edges = cv2.addWeighted(blur_gray, 0.8, line_image, 1, 0)
         cv2.imshow('image', lines_edges)
     except:
-        if state != 'forward':
-            print('straight')
-            run_action('fwstraight')
-            run_action('forward')
-            state = 'forward'
+        # print('Looking for line...')
+        # state = 'noLine'
+        # if linecounter > 10:
+        #     print('failed to find line')
+        #     run_action('backward')
+        #     time.sleep(1.5)
+        # #'camready' | 'camleft' | 'camright' | 'camup' | 'camdown'
+        # linecounter = linecounter + 1
+        # run_action('camleft')
+        # time.sleep(1)
+        # run_action('camright')
+        # time.sleep(1)
+        # run_action('camup')
+        # time.sleep(1)
+        # run_action('camdown')
+        # time.sleep(1)
+
         print('OMG WE CRASHED')
 
 
