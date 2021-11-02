@@ -4,7 +4,7 @@ import numpy as np
 import random
 from enum import Enum
 
-MIN_SIZE=100
+MIN_SIZE = 1500
 
 
 class Side(Enum):
@@ -41,10 +41,10 @@ def find_obs(image, lower, upper, name):
     output = cv2.bitwise_and(image, image, mask=mask)
     gray = cv2.cvtColor(output, cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(gray, (3, 3), 0)
-    cv2.imshow(f'images-{name}', np.hstack([image, output]))
-    cv2.imshow(f'gray-{name}', np.hstack([gray]))
-    cv2.imshow(f'blur-{name}', np.hstack([blur]))
-    cv2.waitKey()
+    # cv2.imshow(f'images-{name}', np.hstack([image, output]))
+    # cv2.imshow(f'gray-{name}', np.hstack([gray]))
+    # cv2.imshow(f'blur-{name}', np.hstack([blur]))
+    # cv2.waitKey()
     ret, im = cv2.threshold(blur, 100, 255, cv2.THRESH_BINARY)
     contours, hierarchy = cv2.findContours(im, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     draw(contours, image, name)
@@ -71,8 +71,8 @@ def detect_obst(image):
     height, width = image.shape[:2]
     boundaries = [
         ([110, 0, 130], [233, 118, 255], 'purple'),  # purple
-        ([176, 0, 135], [255, 135, 228], 'pink'), # pink
-        ([83, 112, 15], [220, 250, 150], 'green'), # green
+        # ([176, 0, 135], [255, 135, 228], 'pink'), # pink
+        # ([83, 112, 15], [220, 250, 150], 'green'), # green
         # ([103, 86, 65], [145, 133, 128])
     ]
     countors=[]
@@ -83,9 +83,9 @@ def detect_obst(image):
     return max_con
 
 
-
-img = cv2.imread('C:\\images\\purple.jpg', cv2.IMREAD_COLOR)
-img = img[170:,:]
-cv2.imshow("cut", np.hstack([img]))
-# cv2.waitKey()
-detect(img)
+#
+# img = cv2.imread('C:\\images\\purple.jpg', cv2.IMREAD_COLOR)
+# img = img[170:,:]
+# cv2.imshow("cut", np.hstack([img]))
+# # cv2.waitKey()
+# detect(img)

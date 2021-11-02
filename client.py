@@ -56,7 +56,8 @@ autologin = 1
 
 # BASE_URL is variant use to save the format of host and port 
 BASE_URL = 'http://' + HOST + ':' + PORT + '/'
-
+GO_SECONDS = 1.5
+BACK_SECONDS = 2
 
 def __reflash_url__():
     global BASE_URL
@@ -292,12 +293,13 @@ class RunningScreen(QtWidgets.QDialog, Ui_Running_screen):
             image_height, image_width = img.shape[:2]
             image_center = image_width/2
             x, y, w, h = cv2.boundingRect(obst)
-            obst_center = (x+w)/2
+            obst_center = x+(w/2)
             if obst_center > image_center:
                 avoid_obst(Side.LEFT)
             else:
                 avoid_obst(Side.RIGHT)
         else:
+            print(f'no obstacle')
             detectLines(img)
         pixmap = QPixmap()
         # get pixmap type data from http type data
@@ -865,18 +867,27 @@ state = 'init'
 
 
 def avoid_obst(side):
+    print(f'obstacle detected on the {side}')
     run_action('stop')
     if side == Side.LEFT:
+        # time.sleep(2)
+        run_action('forward')
         run_action('fwleft')
         run_action('forward')
+        time.sleep(1)
         run_action('fwright')
         run_action('forward')
+        time.sleep(1)
         run_action('fwstraight')
     else:
+        # time.sleep(2)
+        run_action('forward')
         run_action('fwright')
         run_action('forward')
+        time.sleep(1)
         run_action('fwleft')
         run_action('forward')
+        time.sleep(1)
         run_action('fwstraight')
 
     pass
