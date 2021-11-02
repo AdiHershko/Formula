@@ -12,6 +12,9 @@
 **********************************************************************/
 '''
 import sys
+
+import numpy as np
+
 if sys.version_info.major < 3 or sys.version_info.minor < 4:
     raise RuntimeError('At least Python 3.4 is required')
 
@@ -22,6 +25,8 @@ from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtGui import QPixmap
 from urllib.request import urlopen
 import requests
+import cv2
+
 
 login_screen     = "login_screen.ui" 
 running_screen   = "running_screen.ui"
@@ -269,6 +274,10 @@ class RunningScreen(QtWidgets.QDialog, Ui_Running_screen):
 		"""
 		# use the buile-in function to query image from http, and save in data
 		data = self.queryImage.queryImage()
+		nparr = np.frombuffer(data, dtype=np.uint8)
+		img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+		img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+		cv2.imshow('image', img_gray)
 		if not data:
 			return None
 		pixmap = QPixmap()
@@ -810,7 +819,7 @@ if __name__ == "__main__":
 	# creat objects 
 	login1 = LoginScreen()
 	running1 = RunningScreen()	
-	setting1   = SettingScreen()
+	setting1 = SettingScreen()
 	calibrate1 = CalibrateScreen()
 
 	# Show object login1
