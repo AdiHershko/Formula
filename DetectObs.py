@@ -73,6 +73,11 @@ def detect(image):
     return max_con
 
 
+def detect_obs_location(contour, image):
+    return
+
+
+
 img = cv2.imread('C:\\images\\purple.jpg', cv2.IMREAD_COLOR)
 img = img[170:,:]
 cv2.imshow("cut", np.hstack([img]))
