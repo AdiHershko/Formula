@@ -12,7 +12,7 @@
 **********************************************************************/
 '''
 import sys
-from DetectObs import detect
+from DetectObs import detect, snap
 if sys.version_info.major < 3 or sys.version_info.minor < 4:
     raise RuntimeError('At least Python 3.4 is required')
 
@@ -271,6 +271,7 @@ class RunningScreen(QtWidgets.QDialog, Ui_Running_screen):
 		# use the buile-in function to query image from http, and save in data
 		data = self.queryImage.queryImage()
 		detect(data)
+		# detect(data)
 		if not data:
 			return None
 		pixmap = QPixmap()
