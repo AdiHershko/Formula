@@ -16,7 +16,7 @@ import sys
 import cv2
 import numpy as np
 
-from DetectObs import detect_obst
+from DetectObs import detect_obst, Side
 
 if sys.version_info.major < 3 or sys.version_info.minor < 4:
     raise RuntimeError('At least Python 3.4 is required')
@@ -286,10 +286,17 @@ class RunningScreen(QtWidgets.QDialog, Ui_Running_screen):
             return None
         nparr = np.frombuffer(data, dtype=np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
         obst = detect_obst(img)
         if obst is not None:
-            # TODO
-            print('hello')
+            image_height, image_width = img.shape[:2]
+            image_center = image_width/2
+            x, y, w, h = cv2.boundingRect(obst)
+            obst_center = (x+w)/2
+            if obst_center > image_center:
+                avoid_obst(Side.LEFT)
+            else:
+                avoid_obst(Side.RIGHT)
         else:
             detectLines(img)
         pixmap = QPixmap()

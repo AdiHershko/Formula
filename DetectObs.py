@@ -2,6 +2,14 @@ import cv2
 import sys
 import numpy as np
 import random
+from enum import Enum
+
+MIN_SIZE=100
+
+
+class Side(Enum):
+    LEFT = 0
+    RIGHT = 1
 
 
 def snap(data, i):
@@ -21,6 +29,8 @@ def find_max_contour(contours):
         if w * h > maxSize:
             maxContour = c
             maxSize = w * h
+    if maxSize < MIN_SIZE:
+        return None
     return maxContour
 
 
@@ -71,10 +81,6 @@ def detect_obst(image):
         countors.append(find_obs(image, lower, upper, name))
     max_con = find_max_contour(countors)
     return max_con
-
-
-def detect_obs_location(contour, image):
-    return
 
 
 
