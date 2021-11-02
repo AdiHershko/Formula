@@ -24,3 +24,6 @@ def detect(data):
         output = cv2.bitwise_and(image, image, mask=mask)
         # show the images
         cv2.imshow("images", np.hstack([image, output]))
+
+
+
