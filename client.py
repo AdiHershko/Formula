@@ -362,11 +362,15 @@ class RunningScreen(QtWidgets.QDialog, Ui_Running_screen):
             elif key_press == Qt.Key_W:  # W
                 run_action('forward')
             elif key_press == Qt.Key_A:  # A
-                run_action('fwleft')
+                run_action('fwturn:75')
+            elif key_press == Qt.Key_Z:  # Z
+                run_action('fwturn:45')
+            elif key_press == Qt.Key_X:  # X
+                run_action('fwturn:135')
             elif key_press == Qt.Key_S:  # S
                 run_action('backward')
             elif key_press == Qt.Key_D:  # D
-                run_action('fwright')
+                run_action('fwturn:105')
 
     def keyReleaseEvent(self, event):
         """Keyboard released event
@@ -393,6 +397,10 @@ class RunningScreen(QtWidgets.QDialog, Ui_Running_screen):
             elif key_release == Qt.Key_W:  # W
                 run_action('stop')
             elif key_release == Qt.Key_A:  # A
+                run_action('fwstraight')
+            elif key_release == Qt.Key_X:  # A
+                run_action('fwstraight')
+            elif key_release == Qt.Key_Z:  # A
                 run_action('fwstraight')
             elif key_release == Qt.Key_S:  # S
                 run_action('stop')
@@ -851,22 +859,42 @@ def main():
     sys.exit(app.exec_())
 
 
-state = 'noLine'
+state = 'start'
 lineNotFoundcounter = 0
+
+prevDegrees = 0
+first_init = 0
+
+
+def check_line_location(x1,x2, img_w):
+    mid_line = (x1+x2)/2
+    mid_img = img_w /2
+    thresh = 50
+    if mid_line > mid_img + thresh:
+        return 'right'
+    elif mid_line < mid_img - thresh:
+        return 'left'
+    return 'none'
 
 
 def detectLines(data):
     global state
     global linecounter
+    global prevDegrees
+    global first_init
+    if first_init == 0:
+        run_speed("25")
+        first_init = 1
     try:
         nparr = np.frombuffer(data, dtype=np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        img = img[170:, :]
+        img = img[350:, :]
+        img_height, img_width, _ = img.shape
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         kernel_size = 5
         blur_gray = cv2.GaussianBlur(gray, (kernel_size, kernel_size), 0)
-        low_threshold = 100
-        high_threshold = 150
+        low_threshold = 200
+        high_threshold = 400
         edges = cv2.Canny(blur_gray, low_threshold, high_threshold)
         rho = 1  # distance resolution in pixels of the Hough grid
         theta = np.pi / 180  # angular resolution in radians of the Hough grid
@@ -882,58 +910,69 @@ def detectLines(data):
         # cv2.line(line_image, (int(len(img[0]) / 2), 0), (int(len(img[0]) / 2), 1000), (255, 0, 0), 5)
         if len(lines) > 0:
             linecounter = 0
-            if state == 'noLine':
-                run_action('camready')
-        maxDist = 0
-        maxLine = None
-        for line in lines:
-            for x1, y1, x2, y2 in line:
-                dist = math.sqrt((x2-x1)**2 + (y2 - y1)**2)
-                if dist > maxDist:
-                    maxDist = dist
-                    maxLine = line
-        x1, y1, x2, y2 = maxLine[0]
-        slope = (y2-y1) / (x2-x1)
-        #if 1 > slope > -1:
-        #    pass
-        if slope > 2 or slope < -2:
-            print('straight')
-            if state != 'forward':
+        closestLine = find_closest_line(lines)
+        x1, y1, x2, y2 = closestLine[0]
 
-                run_action('fwturn:90')
-                run_action('forward')
+        side = check_line_location(x1, x2, img_width)
+        if side == 'left':
+            if state == 'left':
+                pass
+            print(f'turn left')
+            run_action(f'fwturn:{70}')
+            # time.sleep(0.2)
+            run_action("fwforward")
+            state = 'left'
+        elif side == 'right':
+            print(f'turn right')
+            run_action(f'fwturn:{110}')
+            # time.sleep(0.2)
+            run_action("fwforward")
+        elif side == 'none':
+            print('no deviation from line')
+            run_action("forward")
+
+        slope = (y2 - y1) / (x2 - x1)
+        if -1 < slope < 1:
+            pass
+        degrees = calculate_turn_angle(x1, x2, y1, y2)
+        # if abs(prevDegrees-degrees) < 10:
+        #      print("none")
+        #      run_action("stop")
+        #      run_action("forward")
+        #      run_action("stop")
+        if 80 < degrees < 100:
+            if state != 'forward':
+                print(f'forward: {degrees}')
+                run_action("fwforward")
+                run_action("forward")
                 state = 'forward'
-        elif -2 < slope < 0:
-            print('right')
-            if state != 'right':
-                time.sleep(1.7)
-                run_action('fwturn:10')
-                if slope > -0.5:
-                    run_action('fwturn:20')
-                    time.sleep(1/(5*abs(slope)))
-                run_action('fwstraight')
-                state = 'right'
-        elif 0 < slope < 2:
-            print('left')
-            if state != 'left':
-                time.sleep(1.7)
-                run_action('fwturn:-10')
-                if slope < 0.5:
-                    run_action('fwturn:-20')
-                    time.sleep(1/(5*abs(slope)))
-                run_action('fwstraight')
-                state = 'left'
-        # else:
-        #     print('straight')
-        #     if state != 'forward':
-        #         run_action('fwstraight')
-        #         run_action('forward')
-        #         state = 'forward'
-        print(f'slope: {slope}')
+        else:
+            if state == 'forward':
+                time.sleep(0.8)
+            state = 'turn'
+            print(f'turn: {degrees}')
+            if degrees < 70:
+                degrees = degrees + 5
+            elif degrees > 100:
+                degrees = degrees - 5
+            run_action(f'fwturn:{int(degrees)}')
+            time.sleep(1)
+            run_action("fwready")
         cv2.line(line_image, (x1, y1), (x2, y2), (255, 0, 0), 5)
+
         # Draw the lines on the  image
         lines_edges = cv2.addWeighted(blur_gray, 0.8, line_image, 1, 0)
+        x1 = int(img_width / 2)
+        y1 = img_height
+        x2 = int(x1 - img_height / 2 / math.tan(math.radians(degrees)))
+        y2 = int(img_height / 2)
+        prevDegrees = degrees
+
+        cv2.line(lines_edges, (x1, y1), (x2, y2), (0,0,255), 5)
+
+
         cv2.imshow('image', lines_edges)
+
     except:
         # print('Looking for line...')
         # state = 'noLine'
@@ -954,6 +993,23 @@ def detectLines(data):
 
         print('OMG WE CRASHED')
 
+def find_closest_line(lines):
+    maxY = 0
+    closestLine = None
+    for line in lines:
+        for x1, y1, x2, y2 in line:
+            if y1 > maxY or y2 > maxY:
+                maxY = max(y1, y2)
+                closestLine = line
+    return closestLine
+
+def calculate_turn_angle(x1,x2, y1, y2):
+    x_offset = x1 - x2
+    y_offset = y2 - y1
+    angle_to_mid = math.degrees(math.atan(x_offset / y_offset)) # angle to center vertical line
+    return angle_to_mid + 90  # this is the steering angle needed by picar front wheel
+
+    # return math.degrees(math.atan(slope))
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
