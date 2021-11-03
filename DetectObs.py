@@ -4,7 +4,7 @@ import numpy as np
 import random
 from enum import Enum
 
-MIN_SIZE = 1500
+MIN_SIZE = 200
 
 
 class Side(Enum):
@@ -71,8 +71,9 @@ def detect_obst(image):
     height, width = image.shape[:2]
     boundaries = [
         ([110, 0, 130], [233, 118, 255], 'purple'),  # purple
-        # ([176, 0, 135], [255, 135, 228], 'pink'), # pink
+        ([176, 0, 135], [255, 135, 228], 'pink'), # pink
         # ([83, 112, 15], [220, 250, 150], 'green'), # green
+        # ([0,0,0], [110,110,110], 'black'), # green
         # ([103, 86, 65], [145, 133, 128])
     ]
     countors=[]
@@ -83,9 +84,9 @@ def detect_obst(image):
     return max_con
 
 
-#
-# img = cv2.imread('C:\\images\\purple.jpg', cv2.IMREAD_COLOR)
-# img = img[170:,:]
+# #
+# img = cv2.imread('C:\\images\\black.jpg', cv2.IMREAD_COLOR)
+# img = img[300:,:]
 # cv2.imshow("cut", np.hstack([img]))
 # # cv2.waitKey()
-# detect(img)
+# detect_obst(img)

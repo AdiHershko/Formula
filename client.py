@@ -17,6 +17,7 @@ import cv2
 import numpy as np
 
 from DetectObs import detect_obst, Side
+from detectLane import detect_line
 
 if sys.version_info.major < 3 or sys.version_info.minor < 4:
     raise RuntimeError('At least Python 3.4 is required')
@@ -58,6 +59,7 @@ autologin = 1
 BASE_URL = 'http://' + HOST + ':' + PORT + '/'
 GO_SECONDS = 1.5
 BACK_SECONDS = 2
+
 
 def __reflash_url__():
     global BASE_URL
@@ -287,20 +289,20 @@ class RunningScreen(QtWidgets.QDialog, Ui_Running_screen):
             return None
         nparr = np.frombuffer(data, dtype=np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-        obst = detect_obst(img)
-        if obst is not None:
-            image_height, image_width = img.shape[:2]
-            image_center = image_width/2
-            x, y, w, h = cv2.boundingRect(obst)
-            obst_center = x+(w/2)
-            if obst_center > image_center:
-                avoid_obst(Side.LEFT)
-            else:
-                avoid_obst(Side.RIGHT)
-        else:
-            print(f'no obstacle')
-            detectLines(img)
+        detectLines(data)
+        # obst = detect_obst(img)
+        # if obst is not None:
+        #     image_height, image_width = img.shape[:2]
+        #     image_center = image_width/2
+        #     x, y, w, h = cv2.boundingRect(obst)
+        #     obst_center = x+(w/2)
+        #     if obst_center > image_center:
+        #         avoid_obst(Side.LEFT)
+        #     else:
+        #         avoid_obst(Side.RIGHT)
+        # else:
+        #     print(f'no obstacle')
+        #     detectLines(img)
         pixmap = QPixmap()
         # get pixmap type data from http type data
         pixmap.loadFromData(data)
@@ -867,93 +869,298 @@ state = 'init'
 
 
 def avoid_obst(side):
-    print(f'obstacle detected on the {side}')
+    print(f'avoiding obstacle from the {side}')
     run_action('stop')
     if side == Side.LEFT:
         # time.sleep(2)
-        run_action('forward')
-        run_action('fwleft')
-        run_action('forward')
-        time.sleep(1)
-        run_action('fwright')
+        # run_action('forward')
+        run_action(f'fwturn:{60}')
         run_action('forward')
         time.sleep(1)
         run_action('fwstraight')
+        time.sleep(1)
+        run_action(f'fwturn:{120}')
+        # run_action('forward')
+        time.sleep(1.5)
+        run_action('fwstraight')
     else:
         # time.sleep(2)
-        run_action('forward')
-        run_action('fwright')
-        run_action('forward')
-        time.sleep(1)
-        run_action('fwleft')
+        # run_action('forward')
+        run_action(f'fwturn:{120}')
         run_action('forward')
         time.sleep(1)
+        run_action('fwstraight')
+        time.sleep(1)
+        run_action(f'fwturn:{60}')
+        # run_action('forward')
+        time.sleep(1.5)
         run_action('fwstraight')
 
     pass
 
 
-def detectLines(img):
-    global state
-    try:
-        img = img[120:, :]
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        kernel_size = 5
-        blur_gray = cv2.GaussianBlur(gray, (kernel_size, kernel_size), 0)
-        low_threshold = 90
-        high_threshold = 150
-        edges = cv2.Canny(blur_gray, low_threshold, high_threshold)
-        rho = 1  # distance resolution in pixels of the Hough grid
-        theta = np.pi / 180  # angular resolution in radians of the Hough grid
-        threshold = 50  # minimum number of votes (intersections in Hough grid cell)
-        min_line_length = 50  # minimum number of pixels making up a line
-        max_line_gap = 20  # maximum gap in pixels between connectable line segments
-        line_image = np.copy(blur_gray) * 0  # creating a blank to draw lines on
+# def detectLines(img):
+#     global state
+#     try:
+#         img = img[120:, :]
+#         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+#         kernel_size = 5
+#         blur_gray = cv2.GaussianBlur(gray, (kernel_size, kernel_size), 0)
+#         low_threshold = 90
+#         high_threshold = 150
+#         edges = cv2.Canny(blur_gray, low_threshold, high_threshold)
+#         rho = 1  # distance resolution in pixels of the Hough grid
+#         theta = np.pi / 180  # angular resolution in radians of the Hough grid
+#         threshold = 50  # minimum number of votes (intersections in Hough grid cell)
+#         min_line_length = 50  # minimum number of pixels making up a line
+#         max_line_gap = 20  # maximum gap in pixels between connectable line segments
+#         line_image = np.copy(blur_gray) * 0  # creating a blank to draw lines on
+#
+#         # Run Hough on edge detected image
+#         # Output "lines" is an array containing endpoints of detected line segments
+#         lines = cv2.HoughLinesP(edges, rho, theta, threshold, np.array([]),
+#                                 min_line_length, max_line_gap)
+#         cv2.line(line_image, (int(len(img[0]) / 2), 0), (int(len(img[0]) / 2), 1000), (255, 0, 0), 5)
+#         for line in lines:
+#             for x1, y1, x2, y2 in line:
+#                 slope = (y2 - y1) / (x2 - x1)
+#                 if slope < 1 and slope > -1:
+#                     continue
+#                 if slope > 5 or slope < -5:
+#                     if state != 'forward':
+#                         print('straight')
+#                         run_action('fwstraight')
+#                         run_action('forward')
+#                         state = 'forward'
+#                 elif slope < 0 and x2 > (int(len(img[0]) / 2)):
+#                     if state != 'right':
+#                         print('right')
+#                         run_action('fwright')
+#                         state = 'right'
+#                 elif slope > 0 and x2 < (int(len(img[0]) / 2)):
+#                     if state != 'left':
+#                         print('left')
+#                         run_action('fwleft')
+#                         state = 'left'
+#                 else:
+#                     if state != 'forward':
+#                         print('straight')
+#                         run_action('fwstraight')
+#                         run_action('forward')
+#                         state = 'forward'
+#                 print(f'slope: {slope}')
+#                 cv2.line(line_image, (x1, y1), (x2, y2), (255, 0, 0), 5)
+#         # Draw the lines on the  image
+#         lines_edges = cv2.addWeighted(blur_gray, 0.8, line_image, 1, 0)
+#         cv2.imshow('image', lines_edges)
+#     except:
+#         if state != 'forward':
+#             print('straight')
+#             run_action('fwstraight')
+#             run_action('forward')
+#             state = 'forward'
+#         print('OMG WE CRASHED')
 
-        # Run Hough on edge detected image
-        # Output "lines" is an array containing endpoints of detected line segments
-        lines = cv2.HoughLinesP(edges, rho, theta, threshold, np.array([]),
-                                min_line_length, max_line_gap)
-        cv2.line(line_image, (int(len(img[0]) / 2), 0), (int(len(img[0]) / 2), 1000), (255, 0, 0), 5)
-        for line in lines:
-            for x1, y1, x2, y2 in line:
-                slope = (y2 - y1) / (x2 - x1)
-                if slope < 1 and slope > -1:
-                    continue
-                if slope > 5 or slope < -5:
-                    if state != 'forward':
-                        print('straight')
-                        run_action('fwstraight')
-                        run_action('forward')
-                        state = 'forward'
-                elif slope < 0 and x2 > (int(len(img[0]) / 2)):
-                    if state != 'right':
-                        print('right')
-                        run_action('fwright')
-                        state = 'right'
-                elif slope > 0 and x2 < (int(len(img[0]) / 2)):
-                    if state != 'left':
-                        print('left')
-                        run_action('fwleft')
-                        state = 'left'
-                else:
-                    if state != 'forward':
-                        print('straight')
-                        run_action('fwstraight')
-                        run_action('forward')
-                        state = 'forward'
-                print(f'slope: {slope}')
-                cv2.line(line_image, (x1, y1), (x2, y2), (255, 0, 0), 5)
-        # Draw the lines on the  image
-        lines_edges = cv2.addWeighted(blur_gray, 0.8, line_image, 1, 0)
-        cv2.imshow('image', lines_edges)
-    except:
-        if state != 'forward':
-            print('straight')
-            run_action('fwstraight')
+state = 'start'
+first_init = 0
+linecounter = 0
+
+
+def detectLines(data):
+    global state
+    global linecounter
+    global first_init
+    if first_init == 0:
+        run_speed("35")
+        run_action("camdown")
+        first_init = 1
+    try:
+        nparr = np.frombuffer(data, dtype=np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        img = img[150:, 50:-50]
+        img_height, img_width, _ = img.shape
+        obst = detect_obst(img)
+        if obst is not None:
+            image_height, image_width = img.shape[:2]
+            image_center = image_width/2
+            x, y, w, h = cv2.boundingRect(obst)
+            obst_center = x+(w/2)
+            if obst_center > image_center:
+                avoid_obst(Side.LEFT)
+            else:
+                avoid_obst(Side.RIGHT)
+            return
+        # else:
+        #     print(f'no obstacle')
+        contour = detect_line(img)
+        if contour is None:
+            if state == 'start':
+                run_action('forward')
+                time.sleep(5)
+            linecounter = linecounter + 1
+            if linecounter < 3:
+                return
+            print(f'stop')
+            run_action(f'stop')
+            if state != 'camleft' and state != 'camright':
+                state = 'camleft'
+                run_action('camready')
+                run_action("camdown")
+                run_action('camleft')
+                time.sleep(1)
+
+                return
+            elif state != 'camright':
+                run_action('camready')
+                run_action("camdown")
+                run_action('camright')
+                state = 'camright'
+                time.sleep(1)
+                return
+            else:
+                print('backward')
+                run_action('camready')
+                run_action("camdown")
+                run_action('backward')
+                time.sleep(2)
+                run_action('stop')
+                state = 'backward'
+        # if state == 'camright' or state == 'camleft':
+        #     run_action('camready')
+        #     run_action("camdown")
+        # closestLine = find_closest_line(lines)
+        linecounter = 0
+        # x1, y1, x2, y2 = closestLine[0]
+        x, y, w, h = cv2.boundingRect(contour)
+        side = check_contour_location(x, w, img_width)
+        if side == 'left':
+            if state == 'left':
+                return
+            print(f'turn left')
+            run_action(f'fwturn:{60}')
             run_action('forward')
+            state = 'left'
+        elif side == 'right':
+            if state == 'right':
+                return
+            print(f'turn right')
+            run_action(f'fwturn:{120}')
+            run_action('forward')
+            state = 'right'
+        else:
+            if state == 'forward':
+                return
+            print(f'forward')
+            run_action('camready')
+            run_action("camdown")
+            run_action("fwforward")
+            run_action("forward")
             state = 'forward'
+        # elif side == 'none':
+        #     print('no deviation from line')
+        #     run_action("forward")
+        #
+        # slope = (y2 - y1) / (x2 - x1)
+        # if -1 < slope < 1:
+        #     pass
+        # degrees = calculate_turn_angle(x1, x2, y1, y2)
+        # # if abs(prevDegrees-degrees) < 10:
+        # #      print("none")
+        # #      run_action("stop")
+        # #      run_action("forward")
+        # #      run_action("stop")
+        # if 80 < degrees < 100:
+        #     if state != 'forward':
+        #         print(f'forward: {degrees}')
+        #         run_action("fwforward")
+        #         run_action("forward")
+        #         state = 'forward'
+        # else:
+        #     if state == 'forward':
+        #         time.sleep(0.8)
+        #     state = 'turn'
+        #     print(f'turn: {degrees}')
+        #     if degrees < 70:
+        #         degrees = degrees + 5
+        #     elif degrees > 100:
+        #         degrees = degrees - 5
+        #     run_action(f'fwturn:{int(degrees)}')
+        #     time.sleep(1)
+        #     run_action("fwready")
+        # cv2.line(line_image, (x1, y1), (x2, y2), (255, 0, 0), 5)
+        cv2.rectangle(img, (x, y), (x + w, y + h), (36, 255, 12), 4)
+
+        # Draw the lines on the  image
+        # lines_edges = cv2.addWeighted(gray, 0.8, line_image, 1, 0)
+        # x1 = int(img_width / 2)
+        # y1 = img_height
+        # x2 = int(x1 - img_height / 2 / math.tan(math.radians(degrees)))
+        # y2 = int(img_height / 2)
+        # prevDegrees = degrees
+
+        # cv2.line(lines_edges, (x1, y1), (x2, y2), (0, 0, 255), 5)
+        cv2.imshow('image', img)
+    except:
         print('OMG WE CRASHED')
+
+    #     # print('Looking for line...')
+    #     # state = 'noLine'
+    #     # if linecounter > 10:
+    #     #     print('failed to find line')
+    #     #     run_action('backward')
+    #     #     time.sleep(1.5)
+    #     # #'camready' | 'camleft' | 'camright' | 'camup' | 'camdown'
+    #     # linecounter = linecounter + 1
+    #     # run_action('camleft')
+    #     # time.sleep(1)
+    #     # run_action('camright')
+    #     # time.sleep(1)
+    #     # run_action('camup')
+    #     # time.sleep(1)
+    #     # run_action('camdown')
+    #     # time.sleep(1)
+
+
+def check_line_location(x1, x2, img_w):
+    mid_line = (x1 + x2) / 2
+    first = img_w / 3
+    second = 2 * first
+    if mid_line > second:
+        return 'right'
+    elif mid_line < first:
+        return 'left'
+    return 'straight'
+
+
+def check_contour_location(rect_x, rect_width, img_width):
+    rect_mid = rect_x + (rect_width / 2)
+    first = img_width / 3
+    second = 2 * first
+    if rect_mid > second:
+        return 'right'
+    elif rect_mid < first:
+        return 'left'
+    return 'straight'
+
+
+def find_closest_line(lines):
+    maxY = 0
+    closestLine = None
+    for line in lines:
+        for x1, y1, x2, y2 in line:
+            if y1 > maxY or y2 > maxY:
+                maxY = max(y1, y2)
+                closestLine = line
+    return closestLine
+
+
+def calculate_turn_angle(x1, x2, y1, y2):
+    x_offset = x1 - x2
+    y_offset = y2 - y1
+    angle_to_mid = math.degrees(math.atan(x_offset / y_offset))  # angle to center vertical line
+    return angle_to_mid + 90  # this is the steering angle needed by picar front wheel
+
+    # return math.degrees(math.atan(slope))
 
 
 if __name__ == "__main__":
@@ -970,3 +1177,5 @@ if __name__ == "__main__":
     print("All done")
     # Wait to exit python if there is a exec_() signal
     sys.exit(app.exec_())
+
+
