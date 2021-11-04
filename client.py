@@ -18,6 +18,7 @@ import numpy as np
 
 from DetectObs import detect_obst, Side
 from detectLane import detect_line
+from smoothImage import create_mask
 
 if sys.version_info.major < 3 or sys.version_info.minor < 4:
     raise RuntimeError('At least Python 3.4 is required')
@@ -971,15 +972,18 @@ def detectLines(data):
     global linecounter
     global first_init
     if first_init == 0:
-        run_speed("35")
+        run_speed("28")
         run_action("camdown")
         first_init = 1
     try:
         nparr = np.frombuffer(data, dtype=np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         img = img[150:, 50:-50]
+        mask = create_mask(img)
+        dst = cv2.inpaint(img, mask, 3, cv2.INPAINT_TELEA)
+        cv2.imshow('smooth', dst)
         img_height, img_width, _ = img.shape
-        obst = detect_obst(img)
+        obst = detect_obst(dst)
         if obst is not None:
             image_height, image_width = img.shape[:2]
             image_center = image_width/2
@@ -992,7 +996,7 @@ def detectLines(data):
             return
         # else:
         #     print(f'no obstacle')
-        contour = detect_line(img)
+        contour = detect_line(dst)
         if contour is None:
             if state == 'start':
                 run_action('forward')
